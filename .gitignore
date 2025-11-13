@@ -1,1 +1,43 @@
-/.idea
+# ----------------------------------
+# Python (가상 환경, 캐시, 빌드)
+# ----------------------------------
+
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+build/
+dist/
+*.egg
+*.whl
+
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ----------------------------------
+# IDE (PyCharm)
+# ----------------------------------
+
+.idea/
+
+# ----------------------------------
+# 민감 정보 (Secrets)
+# ----------------------------------
+
+.env
+*.env
+.env.*
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
