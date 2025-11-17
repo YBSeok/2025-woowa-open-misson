@@ -46,7 +46,9 @@
 
 ### 목적
 
-5개의 동인파동과 3개의 조정파동으로 구성
+<img width="502" height="261" alt="화면 캡처 2025-11-13 140516" src="https://github.com/user-attachments/assets/b8e00a5a-9183-4266-abea-34e3df822b0b" />
+
+- 5개의 동인파동과 3개의 조정파동으로 구성
 
 ### 의의
 
@@ -91,6 +93,8 @@
 
 ### 시장 사이클
 
+<img width="467" height="318" alt="222" src="https://github.com/user-attachments/assets/54236dd2-7a78-4ce7-9770-b807c89737d0" />
+
 - 매집, 상승 추세, 분산, 하락 추세
 - 시장 사이클은 주요 세력이 관여해서 주도 됨 (슈퍼개미, 기관, 외국인 등)
 
@@ -101,6 +105,9 @@
 - 현재 가격이 비싼 편인지 싼 편인지를 밴드 형태로 만든 개념.
 
 ### 구성
+
+<img width="670" height="418" alt="33" src="https://github.com/user-attachments/assets/8d5bf9fd-4425-41c4-b090-1de2a1a601fc" />
+
 
 1. 상단밴드
 
@@ -120,6 +127,8 @@
 
 - 거래가 많이 터진 가격대에 더 큰 중요도를 부여한 평균 가격.
 
+<img width="632" height="493" alt="444" src="https://github.com/user-attachments/assets/f20a0e39-29ea-4b13-bf53-29a64a0ab5b5" />
+
 ### 수식
 
 - VWAP = (대표가격\*거래량)의 총합 / 거래량 총합
@@ -134,6 +143,8 @@
 
 ### 구성
 
+<img width="895" height="397" alt="4444" src="https://github.com/user-attachments/assets/ab73b5b3-2cd8-4718-8eb0-c6843b69be8f" />
+
 - 처음 SAR: 최초 SAR 값으로 익스트림 포인트 사용
 - 이전 SAR: 이전 분에 계산된 SAR
 - 익스트림 포인트(EP): 한 추세 안에서 가장 높은 지점과 낮은 지점
@@ -141,11 +152,18 @@
 
 ### 수식
 
+<img width="669" height="406" alt="5555" src="https://github.com/user-attachments/assets/20a0dd5c-c665-4856-b7d9-be387e073129" />
+
+
 - 상승 추세: 이전 SAR + AF\*(뗴-이전 SAR)
 - 하락 추세: 이전 SAR - AF\*(이전 SAR- EP)
 - AF는 0.02에서 시작, 신고점/신저점 출현 시 0.02 증가, 0.2가 최대값
 
 ## 피보나치 되돌림
+
+### 개념
+<img width="673" height="413" alt="777" src="https://github.com/user-attachments/assets/fc14f46e-dec6-4a09-ac5c-769f550f6e88" />
+<img width="611" height="500" alt="8888" src="https://github.com/user-attachments/assets/8335d329-9fce-41c2-88e0-f207c9878df9" />
 
 ### 개념
 
