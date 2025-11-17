@@ -1,11 +1,7 @@
 import pandas as pd
-import numpy as np
 import requests
-import csv
 import time
 import random
-import datetime
-import os
 import warnings
 
 warnings.filterwarnings(action="ignore")
@@ -20,10 +16,10 @@ df_list = []
 for i in range(0,500):
     url = base_url.format(coin_name, start_time)
     webpage = requests.get(url)
-    df_temp =  pd.read_json(webpage.text) # 2. (이전 에러 수정) .content -> .text
+    df_temp =  pd.read_json(webpage.text)
 
     df_temp_data = df_temp[cols]
-    df_list.append(df_temp_data) # 3. df_out.append 대신 리스트에 추가합니다.
+    df_list.append(df_temp_data)
 
     temp_date = df_temp_data.tail(1)['timestamp'].dt.strftime('%Y-%m-%dT%H:%M:%S')
     start_time = temp_date.values[0]
@@ -32,8 +28,6 @@ for i in range(0,500):
     time.sleep(wait_time)
     print(i, end=', ')
 
-# 5. 루프가 모두 끝난 후, 리스트를 DataFrame으로 한 번에 합칩니다.
 df_out = pd.concat(df_list, ignore_index=True)
 
-# 6. 최종 결과를 파일로 한 번만 저장합니다.
 df_out.to_csv("./{}.csv".format(coin_name), index=False)
