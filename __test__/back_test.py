@@ -1,9 +1,14 @@
 import pandas as pd
 from ta.trend import WMAIndicator
 from ta.volume import VolumeWeightedAveragePrice
+from comm.test_func import *
+import itertools
+import time
+from bayes_opt import BayesianOptimization
 
-from comm.test_func import get_buy_amt_list, get_max_loss
-
+# -------------------------------------------------------------------
+# 📈 [2] 데이터 로드 및 전처리 (1회 실행)
+# -------------------------------------------------------------------
 coin_name = "KRW-XRP"
 
 try:
@@ -29,105 +34,207 @@ except Exception as e:
     print(f"컬럼명 변경 중 오류: {e}")
     exit()
 
-df = df_org.iloc[df_org.shape[0]-144000:,].copy()
+# 지표 계산 (144000개 데이터 사용)
+df = df_org.iloc[df_org.shape[0] - 144000:,].copy()
 df['wma7'] = WMAIndicator(df['c'], window=7).wma()
 df['wma99'] = WMAIndicator(df['c'], window=99).wma()
-vwap = VolumeWeightedAveragePrice(high=df['h'], low=df['l'], close=df['c'], volume=df['v'], window=14)
-df['vwap'] = vwap.volume_weighted_average_price()
-df = df.dropna()
-
-revenue_rate = 0.014
-max_loss_rate = 0.2
-increase_rate = 0.2
-buy_cnt_limit = 7
-buy_amt_unit = 4.5
-trade_fee = 0.001
-close = 1300
-buy_amt_list = get_buy_amt_list(buy_amt_unit, buy_cnt_limit, increase_rate)
-max_loss = get_max_loss(close, buy_amt_unit, buy_cnt_limit, increase_rate, max_loss_rate)
-
-buy_cnt = 0
-buy_price = 0
-buy_amt = 0
-revenue = 0
-revenue_t = 0
-buy_cnt_tot = 0
-
-# 백테스팅 시작
-print('----- Start back testing -----')
-for i in range(0, df.shape[0] - 1):
-    row = df.iloc[i]
-    close1 = round(row['c'], 4)
-    wma7 = round(row['wma7'], 4)
-    wma99 = round(row['wma99'], 4)
-    vwap = round(row['vwap'], 4)
-    close2 = round(df.iloc[i + 1]['c'], 4)
-
-    # 손실 최소화
-    loss = buy_price - close2*buy_amt
-    if loss > max_loss:
-        revenue_t = close2 * buy_amt - buy_price - buy_price * trade_fee
-        revenue = round(revenue + revenue_t,4)
-        buy_cnt = 0
-        buy_amt = 0
-        buy_price = 0
-        continue
-
-    # 이익 실현
-    tp_revenue = close2*buy_amt - (buy_price + buy_price*revenue_rate)
-    if buy_cnt > 0 and tp_revenue > 0:
-        revenue_t = close2*buy_amt - buy_price - buy_price * trade_fee
-        revenue = round(revenue + revenue_t,4)
-        buy_cnt = 0
-        buy_amt = 0
-        buy_price = 0
-        continue
+vwap_indicator = VolumeWeightedAveragePrice(high=df['h'], low=df['l'], close=df['c'], volume=df['v'], window=14)
+df['vwap'] = vwap_indicator.volume_weighted_average_price()
+df = df.dropna().reset_index(drop=True)
 
 
-    # 포지션 오픈
-    if buy_cnt < buy_cnt_limit and close2 < vwap and close2 < wma7 and wma7 > wma99:
-        temp_amt = buy_amt_unit + buy_amt*increase_rate
-        buy_price = round(buy_price + (close2 * temp_amt), 4)
-        buy_amt = round(buy_amt + temp_amt, 4)
-        buy_cnt = buy_cnt + 1
-        buy_cnt_tot = buy_cnt_tot + 1
+# -------------------------------------------------------------------
+# 💻 [3] run_test 함수 정의
+# -------------------------------------------------------------------
 
-print('----- Back testing Finished -----')
+def run_test(config):
+    revenue_rate = config['revenue_rate']
+    max_loss_rate = config['max_loss_rate']
+    increase_rate = config['increase_rate']
+    buy_cnt_limit = int(config['buy_cnt_limit'])
+    buy_amt_unit = config['buy_amt_unit']
 
-unrealized_pnl = 0
-final_revenue = revenue  # 1. 실현 손익으로 시작
+    trade_fee = 0.001
+    close = df.iloc[0]['c']
 
-# 2. 루프가 끝났을 때 아직 포지션을 들고 있는지 확인 (미실현 손익 계산)
-if buy_cnt > 0:
-    print(f"\n[알림] 테스트 종료 시점에 포지션 보유 중 (미실현 손익 정산)")
-    last_price = df.iloc[-1]['c']  # 데이터의 가장 마지막 가격
+    max_loss = get_max_loss(close, buy_amt_unit, buy_cnt_limit, increase_rate, max_loss_rate)
 
-    # 3. 현재 보유 포지션의 시장 가치 계산
-    current_market_value = last_price * buy_amt
+    buy_cnt = 0
+    buy_price = 0
+    buy_amt = 0
+    revenue = 0
 
-    # 4. 미실현 손익 (Unrealized P&L) 계산
-    # (buy_price는 '총 매수 금액'으로 가정)
-    unrealized_pnl = current_market_value - buy_price
+    for i in range(0, df.shape[0] - 1):
+        row = df.iloc[i]
+        wma7 = row['wma7']
+        wma99 = row['wma99']
+        vwap = row['vwap']
+        close2 = df.iloc[i + 1]['c']
 
-    print(f"  > 보유 수량 (buy_amt): {buy_amt}")
-    print(f"  > 총 매수 금액 (buy_price): {buy_price:.4f}")
-    print(f"  > 현재 평가 금액: {current_market_value:.4f}")
-    print(f"  > 미실현 손익: {unrealized_pnl:.4f}")
+        # 1. 손실 최소화 (Stop Loss)
+        if buy_cnt > 0:
+            loss_amount = buy_price - close2 * buy_amt
+            if loss_amount > max_loss:
+                revenue_t = close2 * buy_amt - buy_price - (buy_price * trade_fee)
+                revenue = round(revenue + revenue_t, 4)
+                buy_cnt = 0
+                buy_amt = 0
+                buy_price = 0
+                continue
 
-    # 5. 최종 수익 = 실현 수익 + 미실현 수익
-    final_revenue = revenue + unrealized_pnl
+        # 2. 이익 실현 (Take Profit)
+        if buy_cnt > 0:
+            target_revenue_price = buy_price * (1 + revenue_rate)
+            tp_revenue = close2 * buy_amt - target_revenue_price
 
-# 6. 최종 결과 출력
-print("\n----- Test results -----")
-print(f"총 매수 진입 횟수: {buy_cnt_tot} 회")
-print(f"실현 손익 (종료된 거래): {revenue:.4f}")
-print(f"최종 총 손익 (미실현 포함): {final_revenue:.4f}")
+            if tp_revenue > 0:
+                revenue_t = close2 * buy_amt - buy_price - (buy_price * trade_fee)
+                revenue = round(revenue + revenue_t, 4)
+                buy_cnt = 0
+                buy_amt = 0
+                buy_price = 0
+                continue
 
-# 7. 벤치마크: Buy & Hold (B&H) 수익률
-first_price = df.iloc[0]['c']
-last_price = df.iloc[-1]['c']
-buy_and_hold_return = ((last_price - first_price) / first_price) * 100
+        # 3. 포지션 오픈/추가 매수 (Entry/Add Position)
+        if buy_cnt < buy_cnt_limit and close2 < vwap and close2 < wma7 and wma7 > wma99:
+            temp_amt = buy_amt_unit + buy_amt * increase_rate
+            new_buy_price = buy_price + (close2 * temp_amt)
+            buy_price = round(new_buy_price, 4)
+            buy_amt = round(buy_amt + temp_amt, 4)
+            buy_cnt = buy_cnt + 1
 
-print(f"\n----- 📊 벤치마크 (참고) -----")
-print(f"Buy & Hold (B&H) 수익률: {buy_and_hold_return:.2f} %")
-print(f"(첫날 가격: {first_price}, 마지막 날 가격: {last_price})")
+    # 테스트 종료 시 미실현 손익 정산
+    final_revenue = revenue
+    if buy_cnt > 0:
+        last_price = df.iloc[-1]['c']
+        current_market_value = last_price * buy_amt
+        unrealized_pnl = current_market_value - buy_price
+        final_revenue = revenue + unrealized_pnl
+
+    return final_revenue
+
+
+# -------------------------------------------------------------------
+# ⚙️ [4] 최적화 탐색
+# -------------------------------------------------------------------
+
+start_time = time.time()
+all_results_for_bayes = []
+
+## 그리드 서치 (Warm Start 데이터 수집)
+grid_param_space = {
+    'revenue_rate': [0.008, 0.014, 0.020],
+    'max_loss_rate': [0.1, 0.2, 0.3],
+    'increase_rate': [0.1, 0.2, 0.3],
+    'buy_cnt_limit': [5, 7, 10],
+    'buy_amt_unit': [4.5, 8.0, 12.0],
+}
+
+keys = grid_param_space.keys()
+combinations = itertools.product(*grid_param_space.values())
+grid_configs = [dict(zip(keys, c)) for c in combinations]
+
+print(f"--- 📊 1단계: 그리드 서치 (Warm Start 데이터 수집) 시작 (총 {len(grid_configs)}개) ---")
+
+for config in grid_configs:
+    try:
+        final_revenue = run_test(config)
+
+        data_point = {
+            'revenue_rate': config['revenue_rate'],
+            'max_loss_rate': config['max_loss_rate'],
+            'increase_rate': config['increase_rate'],
+            'buy_cnt_limit': float(config['buy_cnt_limit']),
+            'buy_amt_unit': config['buy_amt_unit'],
+            'target': final_revenue
+        }
+        all_results_for_bayes.append(data_point)
+
+    except Exception as e:
+        pass
+
+grid_results_df = pd.DataFrame(all_results_for_bayes)
+if not grid_results_df.empty:
+    print("--- ✅ 그리드 서치 완료 (Warm Start 데이터 준비) ---")
+    best_grid_revenue = grid_results_df['target'].max()
+    print(f"최고 그리드 수익: {best_grid_revenue:.4f}")
+else:
+    print("--- ⚠️ 그리드 서치 결과 없음 ---")
+
+print("-" * 50)
+
+
+## 베이지안 최적화 (Warm Start 적용)
+
+def black_box_function(revenue_rate, max_loss_rate, increase_rate, buy_cnt_limit, buy_amt_unit):
+    buy_cnt_limit = int(round(buy_cnt_limit))
+
+    config_data = {
+        'revenue_rate': revenue_rate,
+        'max_loss_rate': max_loss_rate,
+        'increase_rate': increase_rate,
+        'buy_cnt_limit': buy_cnt_limit,
+        'buy_amt_unit': buy_amt_unit
+    }
+
+    revenue = run_test(config_data)
+
+    return revenue
+
+
+pbounds = {
+    'revenue_rate': (0.005, 0.025),
+    'max_loss_rate': (0.05, 0.40),
+    'increase_rate': (0.1, 0.5),
+    'buy_cnt_limit': (5, 15),
+    'buy_amt_unit': (4, 20),
+}
+
+optimizer = BayesianOptimization(
+    f=black_box_function,
+    pbounds=pbounds,
+    random_state=1,
+)
+
+# 그리드 서치 결과를 베이지안 최적화 모델에 주입 (Warm Start)
+if not grid_results_df.empty:
+    for index, row in grid_results_df.iterrows():
+        try:
+            # 베이지안 모델에 (파라미터, 수익) 데이터 주입
+            optimizer.register(
+                params={k: row[k] for k in pbounds.keys()},
+                target=row['target']
+            )
+        except Exception:
+            # 경계 밖의 값이 있을 경우 무시하고 다음 값 진행
+            pass
+    print(f"--- 🧠 2단계: 베이지안 최적화 시작 (Warm Start 데이터 {len(optimizer.space)}개 주입 완료) ---")
+else:
+    print(f"--- 🧠 2단계: 베이지안 최적화 시작 (Warm Start 데이터 없이 시작) ---")
+
+# 최적화 실행 (Warm Start 데이터 개수만큼 init_points를 줄임)
+ITERATIONS = 50
+optimizer.maximize(
+    init_points=0,  # Warm Start를 했으므로 무작위 초기 탐색 횟수를 0으로 설정
+    n_iter=ITERATIONS,
+)
+
+print("--- ✅ 베이지안 최적화 완료 ---")
+
+# 최종 결과 출력
+best_params = optimizer.max['params']
+best_revenue = optimizer.max['target']
+
+# buy_cnt_limit을 정수 변환
+best_params['buy_cnt_limit'] = int(round(best_params['buy_cnt_limit']))
+
+print("-" * 50)
+print(f"총 실행 시간: {time.time() - start_time:.2f}초")
+print("\n==============================================")
+print("🏆 최종 최적의 알고리즘 파라미터 (하이브리드 최적화)")
+print("==============================================")
+print(f"**최대 최종 수익:** {best_revenue:.4f}")
+print("\n**최적 Config:**")
+for k, v in best_params.items():
+    print(f"  - {k}: {v}")
+print("==============================================")
