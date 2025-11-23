@@ -35,7 +35,6 @@ export default function Sidebar() {
                                   to="/backtest"
                                   className={({ isActive }) => getLinkClasses(isActive)}
                               >
-                                  <span className="text-lg">📊</span>
                                   <span className="ml-2">백테스트 결과</span>
                               </NavLink>
                           </li>

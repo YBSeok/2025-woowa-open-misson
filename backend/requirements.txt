@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+pandas
+numpy
+bayesian-optimization
+ta
+packaging

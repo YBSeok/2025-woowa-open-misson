@@ -12,7 +12,7 @@ from bayes_opt import BayesianOptimization
 coin_name = "KRW-XRP"
 
 try:
-    file_path = f'../data/{coin_name}.csv'
+    file_path = f'data/{coin_name}.csv'
     df_org = pd.read_csv(file_path)
 
 except FileNotFoundError:
