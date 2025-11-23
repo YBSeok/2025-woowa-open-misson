@@ -7,11 +7,13 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))) 
 from __test__.back_test import run_test
+from utils.test_result import load_backtest_results
 
 app = FastAPI()
 
 origins = [
-    "http://localhost:5173",
+    "http://localhost:5173",  
+    "http://127.0.0.1:5173",  
 ]
 
 app.add_middleware(
@@ -57,3 +59,15 @@ async def run_backtest_optimization(config: dict):
 
     except Exception as e:
         return {"error": str(e)}
+
+@app.get("/api/backtest/results/{test_id}", tags=["Backtesting"])
+async def get_backtest_results(test_id: str):
+    """
+    저장된 특정 ID의 백테스트 결과를 로드하여 반환합니다.
+    """
+    results = load_backtest_results(test_id)
+    
+    if results is None:
+        raise HTTPException(status_code=404, detail=f"Test results for ID {test_id} not found.")
+        
+    return results

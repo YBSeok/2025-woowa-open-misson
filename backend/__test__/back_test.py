@@ -5,6 +5,7 @@ from comm.test_func import *
 import itertools
 import time
 from bayes_opt import BayesianOptimization
+import os
 
 # -------------------------------------------------------------------
 # 📈 [2] 데이터 로드 및 전처리 (1회 실행)
@@ -33,6 +34,27 @@ try:
 except Exception as e:
     print(f"컬럼명 변경 중 오류: {e}")
     exit()
+
+RESULTS_DIR = "data/results"
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
+def prepare_data_for_saving(df, final_revenue, best_config):
+    """
+    최적의 파라미터로 시뮬레이션된 데이터프레임에서 필요한 정보를 추출
+    """
+    # 1. 최종 KPI 요약
+    summary = {
+        'final_revenue': final_revenue,
+        'buy_and_hold_return': ((df.iloc[-1]['c'] - df.iloc[0]['c']) / df.iloc[0]['c']) * 100,
+        'total_data_points': len(df),
+        'best_config': best_config
+    }
+    
+    # 2. 시계열 데이터 (차트용: 가격, 지표, 타임스탬프)
+    chart_df = df.copy()
+    chart_df['timestamp'] = chart_df.index.astype(str)
+    
+    return summary, chart_df[['timestamp', 'o', 'h', 'l', 'c', 'v', 'wma7', 'wma99', 'vwap']].iloc[-5000:,].copy()
 
 # 지표 계산 (144000개 데이터 사용)
 df = df_org.iloc[df_org.shape[0] - 144000:,].copy()
@@ -182,6 +204,8 @@ def black_box_function(revenue_rate, max_loss_rate, increase_rate, buy_cnt_limit
     return revenue
 
 
+
+
 pbounds = {
     'revenue_rate': (0.005, 0.025),
     'max_loss_rate': (0.05, 0.40),
@@ -228,8 +252,11 @@ best_revenue = optimizer.max['target']
 # buy_cnt_limit을 정수 변환
 best_params['buy_cnt_limit'] = int(round(best_params['buy_cnt_limit']))
 
+final_best_config = best_params.copy() 
+
 print("-" * 50)
 print(f"총 실행 시간: {time.time() - start_time:.2f}초")
+
 print("\n==============================================")
 print("🏆 최종 최적의 알고리즘 파라미터 (하이브리드 최적화)")
 print("==============================================")
@@ -238,3 +265,18 @@ print("\n**최적 Config:**")
 for k, v in best_params.items():
     print(f"  - {k}: {v}")
 print("==============================================")
+
+
+try:
+    print("\n--- 💾 최종 최적화 결과로 백테스팅 재실행 및 파일 저장 ---")
+
+    summary, chart_df = prepare_data_for_saving(df, best_revenue, final_best_config)
+
+    test_id = f"optimal_run_{int(time.time())}" 
+    
+    save_backtest_results(test_id, summary, chart_df)
+
+    print(f"\n[✔️ 연동 준비 완료] 프론트엔드는 '/api/backtest/results/{test_id}' 경로로 요청하여 데이터를 불러올 수 있습니다.")
+
+except Exception as e:
+    print(f"[❌ 저장 오류] 파일 저장 중 오류가 발생했습니다: {e}")
