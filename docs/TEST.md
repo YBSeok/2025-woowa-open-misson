@@ -1,4 +1,5 @@
 ## 다이렉트 테스트
+<img width="425" height="382" alt="test-1" src="https://github.com/user-attachments/assets/12557ce5-a133-47dc-9334-13409b81b792" />
 
 ## 그리드 최적화 적용
 
@@ -10,6 +11,9 @@
 - 장점: 반드시 정해진 범위 내에서 최적의 조합을 찾음.
 - 단점: 파라미터 개수나 후보 값의 범위가 넓어지면 테스트해야 하는 조합이 기하급수적으로 증가하여 시간이 매우 오래 걸림.
 
+<img width="419" height="458" alt="test-2" src="https://github.com/user-attachments/assets/953f916d-4d2d-4a62-90b5-15be4f7fe9af" />
+
+
 ## 베이지안 최적화 적용
 
 ### 최적의 파라미터 조합을 얻어내는 탐색 방법.
@@ -19,3 +23,6 @@
 - 탐색 목표: '확실히 좋을 것 같은 곳(Exploitation)'과 '아직 모르는 곳(Exploration)' 사이에서 균형을 맞춤.
 - 장점: 테스트 횟수를 획기적으로 줄여 시간이 매우 절약됨. 고비용 함수 최적화에 특히 강력함.
 - 단점: 초기 데이터가 부족하거나 탐색 공간이 너무 복잡하면, 모델이 잘못된 예측을 하여 전역 최적값(Global Optimum)을 놓칠 수 있음.
+
+<img width="431" height="270" alt="test-03" src="https://github.com/user-attachments/assets/f3b60eab-bedb-486e-a170-ce7ceba31425" />
+
