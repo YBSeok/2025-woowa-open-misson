@@ -4,7 +4,7 @@
   "description": "FastAPI backend",
   "main": "main.py",
   "scripts": {
-    "start:dev": ".venv/Scripts/python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000",
-    "start": ".venv/Scripts/python -m uvicorn main:app --host 0.0.0.0 --port 8000"
+    "start:dev": "$env:PYTHONIOENCODING='utf-8';$env:PYTHONPATH='./'; .venv/Scripts/python.exe -m uvicorn main:app --reload --host 0.0.0.0 --port 8000",
+    "start": "$env:PYTHONIOENCODING='utf-8';$env:PYTHONPATH='./'; .venv/Scripts/python.exe -m uvicorn main:app --host 0.0.0.0 --port 8000"
   }
 }
